@@ -41,17 +41,17 @@
                         <label for="from" class="block text-gray-700 text-sm font-bold mb-2">From:</label>
                         <input id="from" name="fromdate" type="date"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                            required>
+                            required min="<%= (new Date()).toISOString().split('T')[0] %>">
                     </div>
                     <div class="mb-4">
                         <label for="to" class="block text-gray-700 text-sm font-bold mb-2">To:</label>
                         <input id="to" name="todate" type="date"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                            required>
+                            required min="<%= (new Date(Date.now() + 86400000)).toISOString().split('T')[0] %>">
                     </div>
                     <div class="mb-4">
                         <label for="beds" class="block text-gray-700 text-sm font-bold mb-2">Number of Beds
-                            Required:</label>
+                            Required:(only one bed can be reserved at once)</label>
                         <input id="beds" name="beds" type="number"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
                             min="1" max="<%= availableBeds %>" required>
