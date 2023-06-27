@@ -316,31 +316,50 @@ app.get("/hrooms", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
   res.render("hrooms.ejs", { rooms, csrfToken: req.csrfToken() });
 });
 app.post("/hrooms", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
-  const userid = req.userId;
-  const H_id = req.query.hid;
-  console.log("...hh.", H_id);
-  const { fromdate, todate } = req.body;
-  const R_id = req.query.roomid;
-  const hotel = await property.findOne({ where: { id: H_id } }); // Use findOne instead of findAll for a single result
-  const room1 = await room.findOne({ where: { id: R_id } });
+  const userId = req.user.id;
+  const hotelId = req.query.hid;
+  const { fromdate, todate, beds } = req.body;
+  const roomId = req.query.roomid;
+
+  const hotel = await property.findOne({ where: { id: hotelId } });
+  const room1 = await room.findOne({ where: { id: roomId } });
+
+  if (!hotel || !room1) {
+    return res.status(404).send("Hotel or room not found");
+  }
+
+  const availableBeds = room1.tslots - room1.membersList.split(",").length;
+
+  if (beds > availableBeds) {
+    return res
+      .status(400)
+      .send("Number of beds requested exceeds availability");
+  }
+
+  const newMembersList = room1.membersList
+    ? room1.membersList + "," + String(userId).repeat(beds)
+    : String(userId).repeat(beds);
+
   const broom = await bookings.create({
-    userid: userid,
-    hid: H_id,
+    userid: userId,
+    hid: hotelId,
     fromdate: fromdate,
     todate: todate,
     price: room1.price,
     hname: hotel.hname,
   });
-  console.log(broom);
+
+  await room.update({ membersList: newMembersList }, { where: { id: roomId } });
+
   res.redirect("/pdf?broomid=" + broom.id);
 });
+
 app.get("/pdf", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
-  const bookingid = req.query.broomid;
-  const booking = await bookings.findOne({ where: { id: bookingid } });
-  const user_id = req.userId;
-  const un = await user.findOne({ where: { id: user_id } });
-  const username = un.firstname + " " + un.lastname;
-  // Generate a random receipt ID using uuidv4
+  const bookingId = req.query.broomid;
+  const booking = await bookings.findOne({ where: { id: bookingId } });
+  const userId = req.user.id;
+  const userRecord = await user.findOne({ where: { id: userId } });
+  const username = userRecord.firstname + " " + userRecord.lastname;
   const receiptId = uuidv4();
 
   const reservationData = [
@@ -356,5 +375,15 @@ app.get("/pdf", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
 
   res.render("pdf.ejs", { reservationData });
 });
+
+app.get(
+  "/mybookings",
+  connectEnsureLogin.ensureLoggedIn(),
+  async (req, res) => {
+    const userId = req.user.id;
+    const mybookings = await bookings.findAll({ where: { userid: userId } });
+    res.render("mybookings.ejs", { mybookings });
+  }
+);
 
 module.exports = app;
